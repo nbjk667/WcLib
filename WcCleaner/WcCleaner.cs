@@ -90,6 +90,7 @@ static class Program
 		string inputDir = "";
 		string patternFile = "";
 		bool logOnly = false;
+		bool autoMode = false;
 		System.Collections.Generic.List< string > definitions = new System.Collections.Generic.List< string > ();
 
 		foreach ( string arg in args )
@@ -105,6 +106,10 @@ static class Program
 			else if ( arg.StartsWith( "-logonly" ) )
 			{
 				logOnly = true;
+			}
+			else if ( arg.StartsWith( "-auto" ) )
+			{
+				autoMode = true;
 			}
 			else if ( arg.StartsWith( "-def=" ) )
 			{
@@ -132,6 +137,27 @@ static class Program
 		{
 			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", patternFile );
 			return;
+		}
+
+		if ( !logOnly && !autoMode )
+		{
+			System.Console.WriteLine( "WARNING: Do you confirm DELETION of files in '{0}' based on patterns in '{1}'? (Press Y or N)", inputDir, patternFile );
+			while ( true )
+			{
+				System.ConsoleKey pressedKey = System.Console.ReadKey( true ).Key;
+
+				if ( pressedKey == System.ConsoleKey.N )
+				{
+					System.Console.WriteLine( "Operation cancelled." );
+					return;
+				}
+				
+				if ( pressedKey == System.ConsoleKey.Y )
+				{
+					System.Console.WriteLine( "Running..." );
+					break;
+				}
+			}
 		}
 
 		new MyFileFilter().Run( inputDir, new WcLib.PatternList( patternFile, definitions.ToArray() ), logOnly );
