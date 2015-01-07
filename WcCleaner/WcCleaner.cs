@@ -116,6 +116,24 @@ static class Program
 			}
 		}
 
+		if ( inputDir.Length < 1 )
+		{
+			System.Console.WriteLine( "ERROR: Input directory is not specified!" );
+			return;
+		}
+
+		if ( !System.IO.Directory.Exists( inputDir ) )
+		{
+			System.Console.WriteLine( "ERROR: Input directory '{0}' doesn't exist!", inputDir );
+			return;
+		}
+
+		if ( !System.IO.File.Exists( patternFile ) )
+		{
+			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", patternFile );
+			return;
+		}
+
 		new MyFileFilter().Run( inputDir, new WcLib.PatternList( patternFile, definitions.ToArray() ), logOnly );
 	}
 }
