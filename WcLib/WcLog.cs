@@ -26,52 +26,48 @@ namespace WcLib
 {
     public class LogManager
     {
-        public virtual string GetFileName( string category ) { return category + ".log"; }
-        public virtual bool UsesConsoleOutput( string category ) { return true; }
-        public virtual string ModifyLine( string categiory, string line ) { return line; }
+        public virtual void WriteLine( string category, string format, params object[] args )
+        {
+            if ( !IsEnabled( category ) )
+                return;
+
+            string formattedLine = PreWriteLine( category, System.String.Format( format, args ) );
+
+            System.IO.StreamWriter writer = GetWriter( category );
+
+            if ( writer != null )
+            {
+                writer.WriteLine( formattedLine );
+            }
+
+            PostWriteLine( category, formattedLine );
+        }
+
+        protected virtual bool IsEnabled( string category ) { return true; }
+        protected virtual string PreWriteLine( string category, string line ) { return line; }
+        protected virtual void PostWriteLine( string category, string line ) { System.Console.WriteLine( line ); }
+        protected virtual System.IO.StreamWriter GetWriter( string category ) { return null; }
     }
 
     public static class Log
     {
-        public static void SetLogManager( LogManager logManager )
+        public static string DefaultCategory = "Default";
+
+        public static void SetManager( LogManager logManager )
         {
             m_logManager = logManager == null ? new LogManager() : logManager;
         }
 
         public static void WriteLine( string category, string format, params object[] args )
         {
-            string formattedLine = m_logManager.ModifyLine( category, string.Format( format, args ) );
-            if ( formattedLine == null )
-                return;
-
-            string fileName = m_logManager.GetFileName( category );
-            if ( fileName != null )
-            {
-                if ( !m_logFiles.ContainsKey( fileName ) )
-                {
-                    m_logFiles.Add( fileName, new System.IO.StreamWriter( fileName ) );
-                }
-
-                m_logFiles[ fileName ].WriteLine( formattedLine );
-            }
-
-            if ( m_logManager.UsesConsoleOutput( category ) )
-            {
-                System.Console.WriteLine( formattedLine );
-            }
+            m_logManager.WriteLine( category, format, args );
         }
 
-        public static void CloseAll()
+        public static void WriteLine( string format, params object[] args )
         {
-            foreach ( var writer in m_logFiles.Values )
-            {
-                writer.Close();
-            }
-
-            m_logFiles.Clear();
+            m_logManager.WriteLine( DefaultCategory, format, args );
         }
 
-        static System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > m_logFiles = new System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > ();
         static LogManager m_logManager = new LogManager();
     }
 }

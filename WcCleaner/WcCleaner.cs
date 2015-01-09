@@ -81,20 +81,49 @@ class MyFileFilter : WcLib.FileFilter
 	bool m_logOnly;
 }
 
+class MyLogManager : WcLib.LogManager, System.IDisposable
+{
+    protected override System.IO.StreamWriter GetWriter( string category )
+    {
+        if ( !m_writers.ContainsKey( category ) )
+        {
+            m_writers.Add( category, new System.IO.StreamWriter( category + ".log" ) );
+        }
+
+        return m_writers[ category ];
+    }
+
+    public void Dispose()
+    {
+        foreach ( var writer in m_writers.Values )
+        {
+            writer.Close();
+            writer.Dispose();
+        }
+
+        m_writers.Clear();
+    }
+
+    System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > m_writers = new System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > ();
+}
+
 static class Program
 {
 	static void Main( string[] args )
 	{
-        try
+        using ( var logManager = new MyLogManager() )
         {
-            RunCleaner( args );
-        }
-        catch ( System.Exception e )
-        {
-            WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
-        }
+            WcLib.Log.SetManager( logManager );
 
-        WcLib.Log.CloseAll();
+            try
+            {
+                RunCleaner( args );
+            }
+            catch ( System.Exception e )
+            {
+                WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+            }
+        }
 	}
 
     static void RunCleaner( string[] args )
