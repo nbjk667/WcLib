@@ -24,9 +24,10 @@
 
 class MyFileFilter : WcLib.FileFilter
 {
-	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logName = null )
+	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logCategory = "" )
 	{
 		m_logOnly = logOnly;
+        m_logCategory = "WcCleaner-" + logCategory;
 		Run( directory, patternList );
 	}
 
@@ -34,7 +35,7 @@ class MyFileFilter : WcLib.FileFilter
 	{
 		if ( fileState == WcLib.FileState.Selected )
 		{
-			WcLib.Log.WriteLine( "WcCleaner", file );
+			WcLib.Log.WriteLine( m_logCategory, file );
 
 			if ( !m_logOnly )
 			{
@@ -62,7 +63,7 @@ class MyFileFilter : WcLib.FileFilter
 
 		if ( isEmpty )
 		{
-			WcLib.Log.WriteLine( "WcCleaner", directory );
+			WcLib.Log.WriteLine( m_logCategory, directory );
 
 			if ( !m_logOnly )
 			{
@@ -79,6 +80,7 @@ class MyFileFilter : WcLib.FileFilter
 	}
 
 	bool m_logOnly;
+    string m_logCategory;
 }
 
 class MyLogManager : WcLib.LogManager, System.IDisposable
@@ -130,31 +132,22 @@ static class Program
     {
 		string argInputDir = "";
 		string argPatternFile = "";
+        string argCategory = "";
 		bool argLogOnly = false;
 		bool argAuto = false;
 		System.Collections.Generic.List< string > argDefs = new System.Collections.Generic.List< string > ();
 
 		foreach ( string arg in args )
 		{
-			if ( arg.StartsWith( "-dir=" ) )
-			{
-				argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
-			}
-			else if ( arg.StartsWith( "-pattern=" ) )
-			{
-				argPatternFile = System.IO.Path.GetFullPath( arg.Substring( 9 ) );
-			}
-			else if ( arg.StartsWith( "-logonly" ) )
-			{
-				argLogOnly = true;
-			}
-			else if ( arg.StartsWith( "-auto" ) )
-			{
-				argAuto = true;
-			}
+			if ( arg.StartsWith( "-dir=" ) ) argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
+			else if ( arg.StartsWith( "-pattern=" ) ) argPatternFile = System.IO.Path.GetFullPath( arg.Substring( 9 ) );
+			else if ( arg.StartsWith( "-logonly" ) ) argLogOnly = true;
+			else if ( arg.StartsWith( "-auto" ) ) argAuto = true;
+            else if ( arg.StartsWith( "-category=" ) ) argCategory = arg.Substring( 10 );
 			else if ( arg.StartsWith( "-def=" ) )
 			{
 				string[] defs = arg.Substring( 5 ).Split( new char[] { '+' }, System.StringSplitOptions.RemoveEmptyEntries );
+
 				if ( defs != null )
 				{
 					argDefs.AddRange( defs );
@@ -162,46 +155,61 @@ static class Program
 			}
 		}
 
-		if ( argInputDir.Length < 1 )
-		{
-			System.Console.WriteLine( "ERROR: Input directory is not specified!" );
-			return;
-		}
-
-		if ( !System.IO.Directory.Exists( argInputDir ) )
-		{
-			System.Console.WriteLine( "ERROR: Input directory '{0}' doesn't exist!", argInputDir );
-			return;
-		}
-
-		if ( !System.IO.File.Exists( argPatternFile ) )
-		{
-			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", argPatternFile );
-			return;
-		}
+		if ( !ValidateInput( argInputDir, argPatternFile ) )
+            return;
 
 		if ( !argLogOnly && !argAuto )
 		{
-			System.Console.WriteLine( "WARNING: Do you confirm DELETION of files in '{0}' based on patterns in '{1}'? (Press Y or N)", argInputDir, argPatternFile );
-			while ( true )
-			{
-				System.ConsoleKey pressedKey = System.Console.ReadKey( true ).Key;
-
-				if ( pressedKey == System.ConsoleKey.N )
-				{
-					System.Console.WriteLine( "Operation cancelled." );
-					return;
-				}
-				
-				if ( pressedKey == System.ConsoleKey.Y )
-				{
-					System.Console.WriteLine( "Running..." );
-					break;
-				}
-			}
+            if ( !ConfirmFileDeletion( argInputDir, argPatternFile ) )
+                return;
 		}
 
-		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly );
+		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly, argCategory );
+    }
+
+    static bool ValidateInput( string inputDir, string patternFile )
+    {
+        if ( inputDir.Length < 1 )
+        {
+            System.Console.WriteLine( "Input directory is not specified!" );
+            return false;
+        }
+
+		if ( !System.IO.Directory.Exists( inputDir ) )
+		{
+			System.Console.WriteLine( "ERROR: Input directory '{0}' doesn't exist!", inputDir );
+			return false;
+		}
+
+		if ( !System.IO.File.Exists( patternFile ) )
+		{
+			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", patternFile );
+			return false;
+		}
+
+        return true;
+    }
+
+    static bool ConfirmFileDeletion( string inputDir, string patternFile )
+    {
+		System.Console.WriteLine( "WARNING: Do you confirm DELETION of files in '{0}' based on patterns in '{1}'? (Press Y or N)", inputDir, patternFile );
+
+		while ( true )
+		{
+			System.ConsoleKey pressedKey = System.Console.ReadKey( true ).Key;
+
+			if ( pressedKey == System.ConsoleKey.N )
+			{
+				System.Console.WriteLine( "Operation cancelled." );
+				return false;
+			}
+				
+			if ( pressedKey == System.ConsoleKey.Y )
+			{
+				System.Console.WriteLine( "Running..." );
+				return true;
+			}
+		}
     }
 }
 
