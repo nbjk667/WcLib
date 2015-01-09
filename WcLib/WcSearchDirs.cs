@@ -30,7 +30,7 @@ namespace WcLib
         {
             if ( includePath != null )
             {
-                string fullPath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( includePath ), relativePath );
+                string fullPath = System.IO.Path.GetFullPath( System.IO.Path.Combine( System.IO.Path.GetDirectoryName( includePath ), relativePath ) );
                 if ( System.IO.File.Exists( fullPath ) )
                 {
                     return fullPath;
@@ -41,7 +41,7 @@ namespace WcLib
 
             foreach ( string dir in m_searchDirs )
             {
-                string fullPath = System.IO.Path.Combine( dir, relativePath );
+                string fullPath = System.IO.Path.GetFullPath( System.IO.Path.Combine( dir, relativePath ) );
                 if ( System.IO.File.Exists( fullPath ) )
                 {
                     return fullPath;
