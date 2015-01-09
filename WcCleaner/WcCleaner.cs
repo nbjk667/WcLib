@@ -45,7 +45,7 @@ class MyFileFilter : WcLib.FileFilter
 				}
 				catch ( System.Exception e )
 				{
-					WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+					WcLib.Log.WriteLine( m_logCategory + "-Errors", e.ToString() );
 				}
 			}
 		}
@@ -73,7 +73,7 @@ class MyFileFilter : WcLib.FileFilter
 				}
 				catch ( System.Exception e )
 				{
-					WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+					WcLib.Log.WriteLine( m_logCategory + "-Errors", e.ToString() );
 				}
 			}
 		}
@@ -111,6 +111,8 @@ class MyLogManager : WcLib.LogManager, System.IDisposable
 
 static class Program
 {
+    static string errorLogCategory = "WcCleaner-Errors";
+
 	static void Main( string[] args )
 	{
         using ( var logManager = new MyLogManager() )
@@ -123,7 +125,7 @@ static class Program
             }
             catch ( System.Exception e )
             {
-                WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+                WcLib.Log.WriteLine( errorLogCategory, e.ToString() );
             }
         }
 	}
@@ -154,6 +156,8 @@ static class Program
 				}
 			}
 		}
+
+        errorLogCategory = "WcCleaner-" + argCategory + "-Errors";
 
 		if ( !ValidateInput( argInputDir, argPatternFile ) )
             return;
