@@ -44,11 +44,15 @@ namespace WcLib
             if ( formattedLine == null )
                 return;
 
-            System.IO.StreamWriter writer = GetWriter( m_logManager.GetFileName( category ) );
-            
-            if ( writer != null )
+            string fileName = m_logManager.GetFileName( category );
+            if ( fileName != null )
             {
-                writer.WriteLine( formattedLine );
+                if ( !m_logFiles.ContainsKey( fileName ) )
+                {
+                    m_logFiles.Add( fileName, new System.IO.StreamWriter( fileName ) );
+                }
+
+                m_logFiles[ fileName ].WriteLine( formattedLine );
             }
 
             if ( m_logManager.UsesConsoleOutput( category ) )
@@ -59,46 +63,15 @@ namespace WcLib
 
         public static void CloseAll()
         {
-            foreach ( var entry in m_logFiles )
+            foreach ( var writer in m_logFiles.Values )
             {
-                entry.writer.Close();
+                writer.Close();
             }
 
             m_logFiles.Clear();
         }
 
-        static System.IO.StreamWriter GetWriter( string fileName )
-        {
-            if ( fileName == null )
-            {
-                return null;
-            }
-
-            System.IO.StreamWriter writer = null;
-
-            foreach ( var entry in m_logFiles )
-            {
-                if ( entry.fileName == fileName )
-                {
-                    writer = entry.writer;
-                    break;
-                }
-            }
-
-            if ( writer == null )
-            {
-                var newEntry = new FileEntry();
-                newEntry.fileName = fileName;
-                newEntry.writer = new System.IO.StreamWriter( fileName );
-                m_logFiles.Add( newEntry );
-                writer = newEntry.writer;
-            }
-
-            return writer;
-        }
-
-        struct FileEntry { public string fileName; public System.IO.StreamWriter writer; }
-        static System.Collections.Generic.List< FileEntry > m_logFiles = new System.Collections.Generic.List< FileEntry > ();
+        static System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > m_logFiles = new System.Collections.Generic.Dictionary< string, System.IO.StreamWriter > ();
         static LogManager m_logManager = new LogManager();
     }
 }
