@@ -65,8 +65,17 @@ namespace WcLib
 	{
 		public PatternList( string fileName, string[] definitions = null )
 		{
-			string sourceFileDirectory = System.IO.Path.GetDirectoryName( System.IO.Path.GetFullPath( fileName ) );
 			string[] preprocessedLines;
+
+            if ( !System.IO.Path.IsPathRooted( fileName ) )
+            {
+                string originalFileName = fileName;
+                fileName = SearchDirs.GetFullPath( fileName );
+                if ( fileName == null )
+                {
+                    fileName = System.IO.Path.GetFullPath( originalFileName );
+                }
+            }
 
 			using ( var reader = new System.IO.StreamReader( fileName ) )
 			{
@@ -81,6 +90,8 @@ namespace WcLib
 				preprocessedLines = Parser.Preprocess( lines.ToArray(), definitions );
 			}
 
+            m_sourceFileName = fileName;
+
 			foreach ( string line in preprocessedLines )
 			{
 				string trimmedLine = line.Trim();
@@ -88,7 +99,7 @@ namespace WcLib
 				if ( trimmedLine.StartsWith( "#include" ) )
 				{
 					string includeFileName = trimmedLine.Substring( 8 ).Trim().Trim( '"' );
-					string includeFilePath = System.IO.Path.Combine( sourceFileDirectory, includeFileName );
+					string includeFilePath = SearchDirs.GetFullPath( includeFileName, fileName );
 					m_patterns.AddRange( new PatternList( includeFilePath ).GetPatterns() );
 				}
 				else
@@ -122,7 +133,13 @@ namespace WcLib
 			return m_patterns.ToArray();
 		}
 
+        public string SourceFileName
+        {
+            get { return m_sourceFileName; }
+        }
+
 		System.Collections.Generic.List< Pattern > m_patterns = new System.Collections.Generic.List< Pattern > ();
+        string m_sourceFileName;
 	}
 }
 

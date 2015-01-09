@@ -27,8 +27,8 @@ class MyFileFilter : WcLib.FileFilter
 	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logCategory = "" )
 	{
 		m_logOnly = logOnly;
-        m_logCategory = "WcCleaner-" + logCategory;
-		Run( directory, patternList );
+        m_logCategory = logCategory.Length > 0 ? "WcCleaner-" + logCategory : "WcCleaner";
+        Run( directory, patternList );
 	}
 
 	protected override void ProcessFile( string file, WcLib.FileState fileState )
@@ -142,7 +142,7 @@ static class Program
 		foreach ( string arg in args )
 		{
 			if ( arg.StartsWith( "-dir=" ) ) argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
-			else if ( arg.StartsWith( "-pattern=" ) ) argPatternFile = System.IO.Path.GetFullPath( arg.Substring( 9 ) );
+			else if ( arg.StartsWith( "-pattern=" ) ) argPatternFile = arg.Substring( 9 );
 			else if ( arg.StartsWith( "-logonly" ) ) argLogOnly = true;
 			else if ( arg.StartsWith( "-auto" ) ) argAuto = true;
             else if ( arg.StartsWith( "-category=" ) ) argCategory = arg.Substring( 10 );
@@ -157,25 +157,30 @@ static class Program
 			}
 		}
 
-        errorLogCategory = "WcCleaner-" + argCategory + "-Errors";
+        if ( argCategory.Length > 0 )
+        {
+            errorLogCategory = "WcCleaner-" + argCategory + "-Errors";
+        }
 
 		if ( !ValidateInput( argInputDir, argPatternFile ) )
             return;
 
+        WcLib.PatternList patternList = new WcLib.PatternList( argPatternFile, argDefs.ToArray() );
+
 		if ( !argLogOnly && !argAuto )
 		{
-            if ( !ConfirmFileDeletion( argInputDir, argPatternFile ) )
+            if ( !ConfirmFileDeletion( argInputDir, patternList.SourceFileName ) )
                 return;
 		}
 
-		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly, argCategory );
+		new MyFileFilter().Run( argInputDir, patternList, argLogOnly, argCategory );
     }
 
     static bool ValidateInput( string inputDir, string patternFile )
     {
         if ( inputDir.Length < 1 )
         {
-            System.Console.WriteLine( "Input directory is not specified!" );
+            System.Console.WriteLine( "ERROR: Input directory is not specified!" );
             return false;
         }
 
@@ -185,9 +190,9 @@ static class Program
 			return false;
 		}
 
-		if ( !System.IO.File.Exists( patternFile ) )
+		if ( patternFile.Length < 1 )
 		{
-			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", patternFile );
+			System.Console.WriteLine( "ERROR: Pattern file is not specified!" );
 			return false;
 		}
 
