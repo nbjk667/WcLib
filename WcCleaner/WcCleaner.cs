@@ -24,12 +24,22 @@
 
 class MyFileFilter : WcLib.FileFilter
 {
-	public void Run( string directory, WcLib.PatternList patternList, bool logOnly )
+	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logName = null )
 	{
-		m_logWriter = new System.IO.StreamWriter( "WcCleaner.log" );
-		m_logWriterErrors = new System.IO.StreamWriter( "WcCleaner-Errors.log" );
+        string logFileName = "WcCleaner.log";
+        string errorLogFileName = "WcCleaner-Errors.log";
+        if ( logName != null )
+        {
+            logFileName = "WcCleaner-" + logName + ".log";
+            errorLogFileName = "WcCleaner-" + logName + "-Errors.log";
+        }
+
+		m_logWriter = new System.IO.StreamWriter( logFileName );
+		m_logWriterErrors = new System.IO.StreamWriter( errorLogFileName );
 		m_logOnly = logOnly;
-		Run( directory, patternList );		
+
+		Run( directory, patternList );	
+	
 		m_logWriter.Close();
 		m_logWriterErrors.Close();
 	}
@@ -87,61 +97,66 @@ static class Program
 {
 	static void Main( string[] args )
 	{
-		string inputDir = "";
-		string patternFile = "";
-		bool logOnly = false;
-		bool autoMode = false;
-		System.Collections.Generic.List< string > definitions = new System.Collections.Generic.List< string > ();
+		string argInputDir = "";
+		string argPatternFile = "";
+		bool argLogOnly = false;
+		bool argAuto = false;
+        bool argNamedLog = false;
+		System.Collections.Generic.List< string > argDefs = new System.Collections.Generic.List< string > ();
 
 		foreach ( string arg in args )
 		{
 			if ( arg.StartsWith( "-dir=" ) )
 			{
-				inputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
+				argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
 			}
 			else if ( arg.StartsWith( "-pattern=" ) )
 			{
-				patternFile = System.IO.Path.GetFullPath( arg.Substring( 9 ) );
+				argPatternFile = System.IO.Path.GetFullPath( arg.Substring( 9 ) );
 			}
 			else if ( arg.StartsWith( "-logonly" ) )
 			{
-				logOnly = true;
+				argLogOnly = true;
 			}
 			else if ( arg.StartsWith( "-auto" ) )
 			{
-				autoMode = true;
+				argAuto = true;
 			}
+            else if ( arg.StartsWith( "-named" ) )
+            {
+                argNamedLog = true;
+            }
 			else if ( arg.StartsWith( "-def=" ) )
 			{
 				string[] defs = arg.Substring( 5 ).Split( new char[] { '+' }, System.StringSplitOptions.RemoveEmptyEntries );
 				if ( defs != null )
 				{
-					definitions.AddRange( defs );
+					argDefs.AddRange( defs );
 				}
 			}
 		}
 
-		if ( inputDir.Length < 1 )
+		if ( argInputDir.Length < 1 )
 		{
 			System.Console.WriteLine( "ERROR: Input directory is not specified!" );
 			return;
 		}
 
-		if ( !System.IO.Directory.Exists( inputDir ) )
+		if ( !System.IO.Directory.Exists( argInputDir ) )
 		{
-			System.Console.WriteLine( "ERROR: Input directory '{0}' doesn't exist!", inputDir );
+			System.Console.WriteLine( "ERROR: Input directory '{0}' doesn't exist!", argInputDir );
 			return;
 		}
 
-		if ( !System.IO.File.Exists( patternFile ) )
+		if ( !System.IO.File.Exists( argPatternFile ) )
 		{
-			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", patternFile );
+			System.Console.WriteLine( "ERROR: Pattern file '{0}' doesn't exist!", argPatternFile );
 			return;
 		}
 
-		if ( !logOnly && !autoMode )
+		if ( !argLogOnly && !argAuto )
 		{
-			System.Console.WriteLine( "WARNING: Do you confirm DELETION of files in '{0}' based on patterns in '{1}'? (Press Y or N)", inputDir, patternFile );
+			System.Console.WriteLine( "WARNING: Do you confirm DELETION of files in '{0}' based on patterns in '{1}'? (Press Y or N)", argInputDir, argPatternFile );
 			while ( true )
 			{
 				System.ConsoleKey pressedKey = System.Console.ReadKey( true ).Key;
@@ -160,7 +175,14 @@ static class Program
 			}
 		}
 
-		new MyFileFilter().Run( inputDir, new WcLib.PatternList( patternFile, definitions.ToArray() ), logOnly );
+        string logName = null;
+
+        if ( argNamedLog )
+        {
+            logName = System.IO.Path.GetFileNameWithoutExtension( argPatternFile );
+        }
+
+		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly, logName );
 	}
 }
 
