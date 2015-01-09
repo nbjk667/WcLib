@@ -26,30 +26,15 @@ class MyFileFilter : WcLib.FileFilter
 {
 	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logName = null )
 	{
-        string logFileName = "WcCleaner.log";
-        string errorLogFileName = "WcCleaner-Errors.log";
-        if ( logName != null )
-        {
-            logFileName = "WcCleaner-" + logName + ".log";
-            errorLogFileName = "WcCleaner-" + logName + "-Errors.log";
-        }
-
-		m_logWriter = new System.IO.StreamWriter( logFileName );
-		m_logWriterErrors = new System.IO.StreamWriter( errorLogFileName );
 		m_logOnly = logOnly;
-
-		Run( directory, patternList );	
-	
-		m_logWriter.Close();
-		m_logWriterErrors.Close();
+		Run( directory, patternList );
 	}
 
 	protected override void ProcessFile( string file, WcLib.FileState fileState )
 	{
 		if ( fileState == WcLib.FileState.Selected )
 		{
-			m_logWriter.WriteLine( file );
-			System.Console.WriteLine( file );
+			WcLib.Log.WriteLine( "WcCleaner", file );
 
 			if ( !m_logOnly )
 			{
@@ -59,8 +44,7 @@ class MyFileFilter : WcLib.FileFilter
 				}
 				catch ( System.Exception e )
 				{
-					m_logWriterErrors.WriteLine( e );
-					System.Console.WriteLine( e );
+					WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
 				}
 			}
 		}
@@ -78,18 +62,22 @@ class MyFileFilter : WcLib.FileFilter
 
 		if ( isEmpty )
 		{
-			m_logWriter.WriteLine( directory );
-			System.Console.WriteLine( directory );
+			WcLib.Log.WriteLine( "WcCleaner", directory );
 
 			if ( !m_logOnly )
 			{
-				System.IO.Directory.Delete( directory );
+				try
+				{
+					System.IO.Directory.Delete( directory );
+				}
+				catch ( System.Exception e )
+				{
+					WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+				}
 			}
 		}
 	}
 
-	System.IO.StreamWriter m_logWriter;
-	System.IO.StreamWriter m_logWriterErrors;
 	bool m_logOnly;
 }
 
@@ -97,11 +85,24 @@ static class Program
 {
 	static void Main( string[] args )
 	{
+        try
+        {
+            RunCleaner( args );
+        }
+        catch ( System.Exception e )
+        {
+            WcLib.Log.WriteLine( "WcCleaner-Errors", e.ToString() );
+        }
+
+        WcLib.Log.CloseAll();
+	}
+
+    static void RunCleaner( string[] args )
+    {
 		string argInputDir = "";
 		string argPatternFile = "";
 		bool argLogOnly = false;
 		bool argAuto = false;
-        bool argNamedLog = false;
 		System.Collections.Generic.List< string > argDefs = new System.Collections.Generic.List< string > ();
 
 		foreach ( string arg in args )
@@ -122,10 +123,6 @@ static class Program
 			{
 				argAuto = true;
 			}
-            else if ( arg.StartsWith( "-named" ) )
-            {
-                argNamedLog = true;
-            }
 			else if ( arg.StartsWith( "-def=" ) )
 			{
 				string[] defs = arg.Substring( 5 ).Split( new char[] { '+' }, System.StringSplitOptions.RemoveEmptyEntries );
@@ -175,14 +172,7 @@ static class Program
 			}
 		}
 
-        string logName = null;
-
-        if ( argNamedLog )
-        {
-            logName = System.IO.Path.GetFileNameWithoutExtension( argPatternFile );
-        }
-
-		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly, logName );
-	}
+		new MyFileFilter().Run( argInputDir, new WcLib.PatternList( argPatternFile, argDefs.ToArray() ), argLogOnly );
+    }
 }
 
