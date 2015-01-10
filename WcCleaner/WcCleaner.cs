@@ -24,11 +24,18 @@
 
 class MyFileFilter : WcLib.FileFilter
 {
-	public void Run( string directory, WcLib.PatternList patternList, bool logOnly, string logCategory = "" )
+    public enum Mode
+    {
+        Delete, Move, Copy, Skip
+    }
+
+	public void Run( string inputDir, string outputDir, WcLib.PatternList patternList, Mode mode, string logCategory = "" )
 	{
-		m_logOnly = logOnly;
+		m_mode = mode;
         m_logCategory = logCategory.Length > 0 ? "WcCleaner-" + logCategory : "WcCleaner";
-        Run( directory, patternList );
+        m_inputDir = inputDir;
+        m_outputDir = outputDir;
+        Run( inputDir, patternList );
 	}
 
 	protected override void ProcessFile( string file, WcLib.FileState fileState )
@@ -37,11 +44,49 @@ class MyFileFilter : WcLib.FileFilter
 		{
 			WcLib.Log.WriteLine( m_logCategory, file );
 
-			if ( !m_logOnly )
+			if ( m_mode != Mode.Skip )
 			{
+                string outputFileName = null;
+
+                if ( m_mode == Mode.Move || m_mode == Mode.Copy )
+                {
+                    string relativeFileName = file.Substring( m_inputDir.Length );
+                    if ( relativeFileName.StartsWith( new string( System.IO.Path.DirectorySeparatorChar, 1 ) ) ||
+                         relativeFileName.StartsWith( new string( System.IO.Path.AltDirectorySeparatorChar, 1 ) ) )
+                    {
+                        relativeFileName = relativeFileName.Substring( 1 );
+                    }
+                    
+                    outputFileName = System.IO.Path.Combine( m_outputDir, relativeFileName );
+                    string outputDirectory = System.IO.Path.GetDirectoryName( outputFileName );
+                    if ( !System.IO.Directory.Exists( outputDirectory ) )
+                    {
+                        System.IO.Directory.CreateDirectory( outputDirectory );
+                    }
+
+                    WcLib.Log.WriteLine( m_logCategory + "-Output", outputFileName );
+                }
+
 				try
 				{
-					System.IO.File.Delete( file );
+                    switch ( m_mode )
+                    {
+                        case Mode.Delete:
+                        {
+                            System.IO.File.Delete( file );
+                            break;
+                        }
+                        case Mode.Move:
+                        {
+                            System.IO.File.Move( file, outputFileName );
+                            break;
+                        }
+                        case Mode.Copy:
+                        {
+                            System.IO.File.Copy( file, outputFileName );
+                            break;
+                        }
+                    }
 				}
 				catch ( System.Exception e )
 				{
@@ -65,7 +110,7 @@ class MyFileFilter : WcLib.FileFilter
 		{
 			WcLib.Log.WriteLine( m_logCategory, directory );
 
-			if ( !m_logOnly )
+			if ( m_mode != Mode.Skip )
 			{
 				try
 				{
@@ -79,8 +124,10 @@ class MyFileFilter : WcLib.FileFilter
 		}
 	}
 
-	bool m_logOnly;
+	Mode m_mode;
     string m_logCategory;
+    string m_inputDir;
+    string m_outputDir;
 }
 
 class MyLogManager : WcLib.LogManager, System.IDisposable
@@ -133,10 +180,12 @@ static class Program
     static void RunCleaner( string[] args )
     {
 		string argInputDir = "";
+        string argOutputDir = "";
 		string argPatternFile = "";
         string argCategory = "";
-		bool argLogOnly = false;
+        bool argLogOnly = false;
 		bool argAuto = false;
+        MyFileFilter.Mode argMode = MyFileFilter.Mode.Delete;
 		System.Collections.Generic.List< string > argDefs = new System.Collections.Generic.List< string > ();
 
 		foreach ( string arg in args )
@@ -155,6 +204,16 @@ static class Program
 					argDefs.AddRange( defs );
 				}
 			}
+            else if ( arg.StartsWith( "-moveto=" ) )
+            {
+                argOutputDir = System.IO.Path.GetFullPath( arg.Substring( 8 ) );
+                argMode = MyFileFilter.Mode.Move;
+            }
+            else if ( arg.StartsWith( "-copyto=" ) )
+            {
+                argOutputDir = System.IO.Path.GetFullPath( arg.Substring( 8 ) );
+                argMode = MyFileFilter.Mode.Copy;
+            }
 		}
 
         if ( argCategory.Length > 0 )
@@ -162,18 +221,23 @@ static class Program
             errorLogCategory = "WcCleaner-" + argCategory + "-Errors";
         }
 
+        if ( argLogOnly )
+        {
+            argMode = MyFileFilter.Mode.Skip;
+        }
+
 		if ( !ValidateInput( argInputDir, argPatternFile ) )
             return;
 
         WcLib.PatternList patternList = new WcLib.PatternList( argPatternFile, argDefs.ToArray() );
 
-		if ( !argLogOnly && !argAuto )
+		if ( argMode == MyFileFilter.Mode.Delete && !argAuto )
 		{
             if ( !ConfirmFileDeletion( argInputDir, patternList.SourceFileName ) )
                 return;
 		}
 
-		new MyFileFilter().Run( argInputDir, patternList, argLogOnly, argCategory );
+		new MyFileFilter().Run( argInputDir, argOutputDir, patternList, argMode, argCategory );
     }
 
     static bool ValidateInput( string inputDir, string patternFile )
