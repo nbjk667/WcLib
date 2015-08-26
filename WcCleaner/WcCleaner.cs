@@ -190,12 +190,13 @@ static class Program
 
 		foreach ( string arg in args )
 		{
-			if ( arg.StartsWith( "-dir=" ) ) argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
-			else if ( arg.StartsWith( "-pattern=" ) ) argPatternFile = arg.Substring( 9 );
-			else if ( arg.StartsWith( "-logonly" ) ) argLogOnly = true;
-			else if ( arg.StartsWith( "-auto" ) ) argAuto = true;
-            else if ( arg.StartsWith( "-category=" ) ) argCategory = arg.Substring( 10 );
-			else if ( arg.StartsWith( "-def=" ) )
+			string lowercaseArg = arg.ToLower();
+			if ( lowercaseArg.StartsWith( "-dir=" ) ) argInputDir = System.IO.Path.GetFullPath( arg.Substring( 5 ) );
+			else if ( lowercaseArg.StartsWith( "-pattern=" ) ) argPatternFile = arg.Substring( 9 );
+			else if ( lowercaseArg.StartsWith( "-logonly" ) ) argLogOnly = true;
+			else if ( lowercaseArg.StartsWith( "-auto" ) ) argAuto = true;
+            else if ( lowercaseArg.StartsWith( "-category=" ) ) argCategory = arg.Substring( 10 );
+			else if ( lowercaseArg.StartsWith( "-def=" ) )
 			{
 				string[] defs = arg.Substring( 5 ).Split( new char[] { '+' }, System.StringSplitOptions.RemoveEmptyEntries );
 
@@ -204,12 +205,12 @@ static class Program
 					argDefs.AddRange( defs );
 				}
 			}
-            else if ( arg.StartsWith( "-moveto=" ) )
+            else if ( lowercaseArg.StartsWith( "-moveto=" ) )
             {
                 argOutputDir = System.IO.Path.GetFullPath( arg.Substring( 8 ) );
                 argMode = MyFileFilter.Mode.Move;
             }
-            else if ( arg.StartsWith( "-copyto=" ) )
+            else if ( lowercaseArg.StartsWith( "-copyto=" ) )
             {
                 argOutputDir = System.IO.Path.GetFullPath( arg.Substring( 8 ) );
                 argMode = MyFileFilter.Mode.Copy;
